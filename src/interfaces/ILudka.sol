@@ -191,19 +191,19 @@ interface ILudka {
     ) external payable;
 
     /**
-     * @param deposits The ERC-20 deposits to be made.
+     *
      */
     function cancelCurrentRoundAndDepositToTheNextRound(
-        DepositCalldata[] calldata deposits,
         bytes32 userCommitment,
-        bytes[] calldata pythUpdateData,
         bytes32 userRandom,
         bytes32 providerRandom
     ) external payable;
 
-    function drawWinner(        uint64 sequenceNumber,
+    function drawWinner(
+        uint64 sequenceNumber,
         bytes32 userRandom,
-        bytes32 providerRandom) external;
+        bytes32 providerRandom
+    ) external;
 
     /**
      * @param roundId The round ID.
