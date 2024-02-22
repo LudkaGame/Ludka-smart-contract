@@ -178,11 +178,9 @@
             _cancel(roundId);
             _deposit(
                 _unsafeAdd(roundId, 1),
-                deposits,
                 userCommitment,
                 userRandom,
-                providerRandom,
-                pythUpdateData
+                providerRandom
             );
         }
 
@@ -191,13 +189,11 @@
         */
         function deposit(
             uint256 roundId,
-            DepositCalldata[] calldata deposits,
             bytes32 userCommitment,
             bytes32 userRandom,
-            bytes32 providerRandom,
-            bytes[] calldata pythUpdateData
-        ) external payable nonReentrant whenNotPaused {
-            _deposit(roundId, deposits, userCommitment, userRandom,providerRandom,pythUpdateData);
+            bytes32 providerRandom
+  ) external payable nonReentrant whenNotPaused {
+            _deposit(roundId, userCommitment, userRandom,providerRandom);
         }
 
         /**
@@ -748,7 +744,7 @@
         * @param roundId The open round ID.
         */
         function _drawWinner(
-                Round storage round,
+            Round storage round,
             uint256 roundId,
             uint64 sequenceNumber,
             bytes32 userRandom,
@@ -800,15 +796,12 @@
 
         /**
         * @param _roundId The open round ID.
-        * @param _deposits The ERC-20 deposits to be made.
         */
         function _deposit(
             uint256 _roundId,
-            DepositCalldata[] calldata _deposits,
             bytes32 userCommitment,
             bytes32 _userRandom,
-            bytes32 _providerRandom,
-            bytes[] calldata priceUpdateData
+            bytes32 _providerRandom
         ) private {
             uint256 roundId = _roundId;
             bytes32 userRandom = _userRandom;
