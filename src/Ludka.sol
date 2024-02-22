@@ -5,8 +5,8 @@
     import {ReentrancyGuard} from "../lib/@looksrare/contracts-libs/contracts/ReentrancyGuard.sol";
     import {Pausable} from "../lib/@looksrare/contracts-libs/contracts/Pausable.sol";
 
-    import {LowLevelWETH} from "../lib/@looksrare/contracts-libs/contracts/lowLevelCallers/LowLevelWETH.sol";
-    import {LowLevelERC20Transfer} from "../lib/@looksrare/contracts-libs/contracts/lowLevelCallers/LowLevelERC20Transfer.sol";
+/*     import {LowLevelWETH} from "../lib/@looksrare/contracts-libs/contracts/lowLevelCallers/LowLevelWETH.sol";
+    import {LowLevelERC20Transfer} from "../lib/@looksrare/contracts-libs/contracts/lowLevelCallers/LowLevelERC20Transfer.sol"; */
 
     import {AccessControl} from "../lib/@openzeppelin/contracts/access/AccessControl.sol";
 
@@ -22,23 +22,23 @@
 
     /**
     * @title Ludka
-    * @notice This contract permissionlessly hosts Ludkas
+    * @notice This contract just LUDKA
     * @author luthreek
     */
     contract Ludka is
         ILudka,
         AccessControl,
-        LowLevelWETH,
-        LowLevelERC20Transfer,
+/*         LowLevelWETH,
+        LowLevelERC20Transfer, */
         ReentrancyGuard,
         Pausable
     {
         using Arrays for uint256[];
 
         /**
-        * @notice Operators are allowed to add/remove allowed ERC-20.
+        * @notice Operators are allowed to add/remove allowed ERC-20 for future.
         */
-        bytes32 public constant OPERATOR_ROLE = keccak256("OPERATOR_ROLE");
+        bytes32 public constant OPERATOR_ROLE = keccak256("OPERATOR_ROLE"); 
 
         /**
         * @notice The maximum protocol fee in basis points, which is 5%.
