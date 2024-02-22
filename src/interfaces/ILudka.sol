@@ -188,7 +188,9 @@ interface ILudka {
         uint256 roundId,
         DepositCalldata[] calldata deposits,
         bytes32 userCommitment,
-        bytes[] calldata priceUpdateData
+        bytes32 userRandom,
+        bytes32 providerRandom,
+        bytes[] calldata pythUpdateData
     ) external payable;
 
     /**
@@ -197,10 +199,14 @@ interface ILudka {
     function cancelCurrentRoundAndDepositToTheNextRound(
         DepositCalldata[] calldata deposits,
         bytes32 userCommitment,
-        bytes[] calldata priceUpdateData
+        bytes[] calldata pythUpdateData,
+        bytes32 userRandom,
+        bytes32 providerRandom
     ) external payable;
 
-    function drawWinner(bytes32 userCommitment) external;
+    function drawWinner(        uint64 sequenceNumber,
+        bytes32 userRandom,
+        bytes32 providerRandom) external;
 
     /**
      * @param roundId The round ID.
