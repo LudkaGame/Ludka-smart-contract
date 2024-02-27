@@ -43,11 +43,11 @@ contract Ludka is
      * @notice The maximum protocol fee in basis points, which is 5%.
      */
     uint16 public constant MAXIMUM_PROTOCOL_FEE_BP = 500;
+    uint64 public sequenceNumber;
     /**
      * @notice the Blast contract for change Gas Mode to Claimable.
      */
-    IBlast public constant BLAST =
-        IBlast(0x4300000000000000000000000000000000000002);
+    IBlast public constant BLAST = IBlast(0x4300000000000000000000000000000000000002);
 
     /**
      * @notice Wrapped Ether address.
@@ -149,12 +149,8 @@ contract Ludka is
         _updateProtocolFeeRecipient(_protocolFeeRecipient);
         _updateProtocolFeeBp(_protocolFeeBp);
         _updateValuePerEntry(_valuePerEntry);
-        _updateMaximumNumberOfDepositsPerRound(
-            _maximumNumberOfDepositsPerRound
-        );
-        _updateMaximumNumberOfParticipantsPerRound(
-            _maximumNumberOfParticipantsPerRound
-        );
+        _updateMaximumNumberOfDepositsPerRound(_maximumNumberOfDepositsPerRound);
+        _updateMaximumNumberOfParticipantsPerRound(_maximumNumberOfParticipantsPerRound);
         WETH = _weth;
         entropy = IEntropy(_entropy);
         pyth = IPyth(_pythContract);
@@ -173,40 +169,29 @@ contract Ludka is
     ) external payable nonReentrant whenNotPaused {
         uint256 roundId = roundsCount;
         _cancel(roundId);
-        _deposit(
-            _unsafeAdd(roundId, 1),
-            userCommitment,
-            userRandom,
-            providerRandom
-        );
+        _deposit(_unsafeAdd(roundId, 1), userCommitment, userRandom, providerRandom);
     }
 
     /**
      * @inheritdoc ILudka
      */
-    function deposit(
-        uint256 roundId,
-        bytes32 userCommitment,
-        bytes32 userRandom,
-        bytes32 providerRandom
-    ) external payable nonReentrant whenNotPaused {
+    function deposit(uint256 roundId, bytes32 userCommitment, bytes32 userRandom, bytes32 providerRandom)
+        external
+        payable
+        nonReentrant
+        whenNotPaused
+    {
         _deposit(roundId, userCommitment, userRandom, providerRandom);
     }
 
     /**
      * @inheritdoc ILudka
      */
-    function getDeposits(
-        uint256 roundId
-    ) external view returns (Deposit[] memory) {
+    function getDeposits(uint256 roundId) external view returns (Deposit[] memory) {
         return rounds[roundId].deposits;
     }
 
-    function drawWinner(
-        uint64 sequenceNumber,
-        bytes32 userRandom,
-        bytes32 providerRandom
-    ) external nonReentrant whenNotPaused {
+    function drawWinner(bytes32 userRandom, bytes32 providerRandom) external nonReentrant whenNotPaused {
         uint256 roundId = roundsCount;
         Round storage round = rounds[roundId];
 
@@ -220,7 +205,7 @@ contract Ludka is
             revert InsufficientParticipants();
         }
 
-        _drawWinner(round, roundId, sequenceNumber, userRandom, providerRandom);
+        _drawWinner(round, roundId, userRandom, providerRandom);
     }
 
     function cancel() external nonReentrant whenNotPaused {
@@ -230,11 +215,7 @@ contract Ludka is
     /**
      * @inheritdoc ILudka
      */
-    function cancelAfterRandomnessRequest()
-        external
-        nonReentrant
-        whenNotPaused
-    {
+    function cancelAfterRandomnessRequest() external nonReentrant whenNotPaused {
         uint256 roundId = roundsCount;
         Round storage round = rounds[roundId];
 
@@ -254,16 +235,18 @@ contract Ludka is
     /**
      * @inheritdoc ILudka
      */
-    function claimPrizes(
-        ClaimPrizesCalldata[] calldata claimPrizesCalldata
-    ) external payable nonReentrant whenNotPaused {
+    function claimPrizes(ClaimPrizesCalldata[] calldata claimPrizesCalldata)
+        external
+        payable
+        nonReentrant
+        whenNotPaused
+    {
         TransferAccumulator memory transferAccumulator;
         uint256 ethAmount;
         uint256 protocolFeeOwed;
 
-        for (uint256 i; i < claimPrizesCalldata.length; ) {
-            ClaimPrizesCalldata
-                calldata perRoundClaimPrizesCalldata = claimPrizesCalldata[i];
+        for (uint256 i; i < claimPrizesCalldata.length;) {
+            ClaimPrizesCalldata calldata perRoundClaimPrizesCalldata = claimPrizesCalldata[i];
 
             Round storage round = rounds[perRoundClaimPrizesCalldata.roundId];
 
@@ -273,10 +256,9 @@ contract Ludka is
                 revert NotWinner();
             }
 
-            uint256[] calldata prizeIndices = perRoundClaimPrizesCalldata
-                .prizeIndices;
+            uint256[] calldata prizeIndices = perRoundClaimPrizesCalldata.prizeIndices;
 
-            for (uint256 j; j < prizeIndices.length; ) {
+            for (uint256 j; j < prizeIndices.length;) {
                 uint256 index = prizeIndices[j];
                 if (index >= round.deposits.length) {
                     revert InvalidIndex();
@@ -319,11 +301,7 @@ contract Ludka is
             protocolFeeOwed += round.protocolFeeOwed;
             round.protocolFeeOwed = 0;
 
-            emit PrizesClaimed(
-                perRoundClaimPrizesCalldata.roundId,
-                msg.sender,
-                prizeIndices
-            );
+            emit PrizesClaimed(perRoundClaimPrizesCalldata.roundId, msg.sender, prizeIndices);
 
             unchecked {
                 ++i;
@@ -335,15 +313,7 @@ contract Ludka is
             bool status;
 
             assembly {
-                status := call(
-                    10000,
-                    _protocolFeeRecipient,
-                    protocolFeeOwed,
-                    0,
-                    0,
-                    0,
-                    0
-                )
+                status := call(10000, _protocolFeeRecipient, protocolFeeOwed, 0, 0, 0, 0)
             }
 
             if (!status) {
@@ -382,15 +352,7 @@ contract Ludka is
             bool status;
 
             assembly {
-                status := call(
-                    10000,
-                    _protocolFeeRecipient,
-                    protocolFeeOwed,
-                    0,
-                    0,
-                    0,
-                    0
-                )
+                status := call(10000, _protocolFeeRecipient, protocolFeeOwed, 0, 0, 0, 0)
             }
 
             if (!status) {
@@ -405,24 +367,24 @@ contract Ludka is
      * @dev This function does not validate claimPrizesCalldata to not contain duplicate round IDs and prize indices.
      *      It is the responsibility of the caller to ensure that. Otherwise, the returned protocol fee owed will be incorrect.
      */
-    function getClaimPrizesPaymentRequired(
-        ClaimPrizesCalldata[] calldata claimPrizesCalldata
-    ) external view returns (uint256 protocolFeeOwed) {
+    function getClaimPrizesPaymentRequired(ClaimPrizesCalldata[] calldata claimPrizesCalldata)
+        external
+        view
+        returns (uint256 protocolFeeOwed)
+    {
         uint256 ethAmount;
 
-        for (uint256 i; i < claimPrizesCalldata.length; ) {
-            ClaimPrizesCalldata
-                calldata perRoundClaimPrizesCalldata = claimPrizesCalldata[i];
+        for (uint256 i; i < claimPrizesCalldata.length;) {
+            ClaimPrizesCalldata calldata perRoundClaimPrizesCalldata = claimPrizesCalldata[i];
             Round storage round = rounds[perRoundClaimPrizesCalldata.roundId];
 
             _validateRoundStatus(round, RoundStatus.Drawn);
 
-            uint256[] calldata prizeIndices = perRoundClaimPrizesCalldata
-                .prizeIndices;
+            uint256[] calldata prizeIndices = perRoundClaimPrizesCalldata.prizeIndices;
             uint256 numberOfPrizes = prizeIndices.length;
             uint256 prizesCount = round.deposits.length;
 
-            for (uint256 j; j < numberOfPrizes; ) {
+            for (uint256 j; j < numberOfPrizes;) {
                 uint256 index = prizeIndices[j];
                 if (index >= prizesCount) {
                     revert InvalidIndex();
@@ -457,10 +419,7 @@ contract Ludka is
     /**
      * @inheritdoc ILudka
      */
-    function withdrawDeposits(
-        uint256 roundId,
-        uint256[] calldata depositIndices
-    ) external nonReentrant whenNotPaused {
+    function withdrawDeposits(uint256 roundId, uint256[] calldata depositIndices) external nonReentrant whenNotPaused {
         Round storage round = rounds[roundId];
 
         _validateRoundStatus(round, RoundStatus.Cancelled);
@@ -469,7 +428,7 @@ contract Ludka is
         uint256 depositsCount = round.deposits.length;
         uint256 ethAmount;
 
-        for (uint256 i; i < numberOfDeposits; ) {
+        for (uint256 i; i < numberOfDeposits;) {
             uint256 index = depositIndices[i];
             if (index >= depositsCount) {
                 revert InvalidIndex();
@@ -507,15 +466,7 @@ contract Ludka is
                 bool status;
 
                 assembly {
-                    status := call(
-                        10000,
-                        _protocolFeeRecipient,
-                        ethAmount,
-                        0,
-                        0,
-                        0,
-                        0
-                    )
+                    status := call(10000, _protocolFeeRecipient, ethAmount, 0, 0, 0, 0)
                 }
 
                 if (!status) {
@@ -539,14 +490,11 @@ contract Ludka is
     /**
      * @inheritdoc ILudka
      */
-    function updateCurrenciesStatus(
-        address[] calldata currencies,
-        bool isAllowed
-    ) external {
+    function updateCurrenciesStatus(address[] calldata currencies, bool isAllowed) external {
         _validateIsOperator();
 
         uint256 count = currencies.length;
-        for (uint256 i; i < count; ) {
+        for (uint256 i; i < count;) {
             isCurrencyAllowed[currencies[i]] = (isAllowed ? 1 : 0);
             unchecked {
                 ++i;
@@ -574,9 +522,7 @@ contract Ludka is
     /**
      * @inheritdoc ILudka
      */
-    function updateProtocolFeeRecipient(
-        address _protocolFeeRecipient
-    ) external {
+    function updateProtocolFeeRecipient(address _protocolFeeRecipient) external {
         _validateIsOwner();
         _updateProtocolFeeRecipient(_protocolFeeRecipient);
     }
@@ -592,25 +538,17 @@ contract Ludka is
     /**
      * @inheritdoc ILudka
      */
-    function updateMaximumNumberOfDepositsPerRound(
-        uint40 _maximumNumberOfDepositsPerRound
-    ) external {
+    function updateMaximumNumberOfDepositsPerRound(uint40 _maximumNumberOfDepositsPerRound) external {
         _validateIsOwner();
-        _updateMaximumNumberOfDepositsPerRound(
-            _maximumNumberOfDepositsPerRound
-        );
+        _updateMaximumNumberOfDepositsPerRound(_maximumNumberOfDepositsPerRound);
     }
 
     /**
      * @inheritdoc ILudka
      */
-    function updateMaximumNumberOfParticipantsPerRound(
-        uint40 _maximumNumberOfParticipantsPerRound
-    ) external {
+    function updateMaximumNumberOfParticipantsPerRound(uint40 _maximumNumberOfParticipantsPerRound) external {
         _validateIsOwner();
-        _updateMaximumNumberOfParticipantsPerRound(
-            _maximumNumberOfParticipantsPerRound
-        );
+        _updateMaximumNumberOfParticipantsPerRound(_maximumNumberOfParticipantsPerRound);
     }
 
     /**
@@ -622,8 +560,8 @@ contract Ludka is
     }
 
     /**
-        IBlast
-        */
+     * IBlast
+     */
     function claimMyContractsAllGas() external {
         _validateIsOwner();
         BLAST.claimAllGas(address(this), msg.sender);
@@ -634,11 +572,7 @@ contract Ludka is
         */
     function claimGasAtMinClaimRate(uint256 minClaimRateBips) external {
         _validateIsOwner();
-        BLAST.claimGasAtMinClaimRate(
-            address(this),
-            msg.sender,
-            minClaimRateBips
-        );
+        BLAST.claimGasAtMinClaimRate(address(this), msg.sender, minClaimRateBips);
     }
 
     function _validateIsOwner() private view {
@@ -679,9 +613,7 @@ contract Ludka is
     /**
      * @param _protocolFeeRecipient The new protocol fee recipient address
      */
-    function _updateProtocolFeeRecipient(
-        address _protocolFeeRecipient
-    ) private {
+    function _updateProtocolFeeRecipient(address _protocolFeeRecipient) private {
         if (_protocolFeeRecipient == address(0)) {
             revert InvalidValue();
         }
@@ -703,28 +635,20 @@ contract Ludka is
     /**
      * @param _maximumNumberOfDepositsPerRound The new maximum number of deposits per round
      */
-    function _updateMaximumNumberOfDepositsPerRound(
-        uint40 _maximumNumberOfDepositsPerRound
-    ) private {
+    function _updateMaximumNumberOfDepositsPerRound(uint40 _maximumNumberOfDepositsPerRound) private {
         maximumNumberOfDepositsPerRound = _maximumNumberOfDepositsPerRound;
-        emit MaximumNumberOfDepositsPerRoundUpdated(
-            _maximumNumberOfDepositsPerRound
-        );
+        emit MaximumNumberOfDepositsPerRoundUpdated(_maximumNumberOfDepositsPerRound);
     }
 
     /**
      * @param _maximumNumberOfParticipantsPerRound The new maximum number of participants per round
      */
-    function _updateMaximumNumberOfParticipantsPerRound(
-        uint40 _maximumNumberOfParticipantsPerRound
-    ) private {
+    function _updateMaximumNumberOfParticipantsPerRound(uint40 _maximumNumberOfParticipantsPerRound) private {
         if (_maximumNumberOfParticipantsPerRound < 2) {
             revert InvalidValue();
         }
         maximumNumberOfParticipantsPerRound = _maximumNumberOfParticipantsPerRound;
-        emit MaximumNumberOfParticipantsPerRoundUpdated(
-            _maximumNumberOfParticipantsPerRound
-        );
+        emit MaximumNumberOfParticipantsPerRoundUpdated(_maximumNumberOfParticipantsPerRound);
     }
 
     /**
@@ -741,9 +665,7 @@ contract Ludka is
     /**
      * @param _roundsCount The current rounds count
      */
-    function _startRound(
-        uint256 _roundsCount
-    ) private returns (uint256 roundId) {
+    function _startRound(uint256 _roundsCount) private returns (uint256 roundId) {
         unchecked {
             roundId = _roundsCount + 1;
         }
@@ -751,10 +673,8 @@ contract Ludka is
         rounds[roundId].status = RoundStatus.Open;
         rounds[roundId].protocolFeeBp = protocolFeeBp;
         rounds[roundId].cutoffTime = uint40(block.timestamp) + roundDuration;
-        rounds[roundId]
-            .maximumNumberOfDeposits = maximumNumberOfDepositsPerRound;
-        rounds[roundId]
-            .maximumNumberOfParticipants = maximumNumberOfParticipantsPerRound;
+        rounds[roundId].maximumNumberOfDeposits = maximumNumberOfDepositsPerRound;
+        rounds[roundId].maximumNumberOfParticipants = maximumNumberOfParticipantsPerRound;
         rounds[roundId].valuePerEntry = valuePerEntry;
 
         emit RoundStatusUpdated(roundId, RoundStatus.Open);
@@ -764,13 +684,7 @@ contract Ludka is
      * @param round The open round.
      * @param roundId The open round ID.
      */
-    function _drawWinner(
-        Round storage round,
-        uint256 roundId,
-        uint64 sequenceNumber,
-        bytes32 userRandom,
-        bytes32 providerRandom
-    ) private {
+    function _drawWinner(Round storage round, uint256 roundId, bytes32 userRandom, bytes32 providerRandom) private {
         round.status = RoundStatus.Drawing;
         round.drawnAt = uint40(block.timestamp);
 
@@ -778,35 +692,22 @@ contract Ludka is
 
         if (round.status == RoundStatus.Drawing) {
             round.status = RoundStatus.Drawn;
-            bytes32 randomNumber = entropy.reveal(
-                entropyProvider,
-                sequenceNumber,
-                userRandom,
-                providerRandom
-            );
+            bytes32 randomNumber = entropy.reveal(entropyProvider, sequenceNumber, userRandom, providerRandom);
 
             uint256 count = round.deposits.length;
             uint256[] memory currentEntryIndexArray = new uint256[](count);
-            for (uint256 i; i < count; ) {
-                currentEntryIndexArray[i] = uint256(
-                    round.deposits[i].currentEntryIndex
-                );
+            for (uint256 i; i < count;) {
+                currentEntryIndexArray[i] = uint256(round.deposits[i].currentEntryIndex);
                 unchecked {
                     ++i;
                 }
             }
 
-            uint256 currentEntryIndex = currentEntryIndexArray[
-                _unsafeSubtract(count, 1)
-            ];
+            uint256 currentEntryIndex = currentEntryIndexArray[_unsafeSubtract(count, 1)];
             uint256 entriesSold = _unsafeAdd(currentEntryIndex, 1);
             uint256 winningEntry = uint256(randomNumber) % entriesSold;
-            round.winner = round
-                .deposits[currentEntryIndexArray.findUpperBound(winningEntry)]
-                .depositor;
-            round.protocolFeeOwed =
-                (round.valuePerEntry * entriesSold * round.protocolFeeBp) /
-                10_000;
+            round.winner = round.deposits[currentEntryIndexArray.findUpperBound(winningEntry)].depositor;
+            round.protocolFeeOwed = (round.valuePerEntry * entriesSold * round.protocolFeeBp) / 10_000;
 
             emit RoundStatusUpdated(roundId, RoundStatus.Drawn);
 
@@ -817,28 +718,19 @@ contract Ludka is
     /**
      * @param _roundId The open round ID.
      */
-    function _deposit(
-        uint256 _roundId,
-        bytes32 userCommitment,
-        bytes32 _userRandom,
-        bytes32 _providerRandom
-    ) private {
+    function _deposit(uint256 _roundId, bytes32 _userCommitment, bytes32 _userRandom, bytes32 _providerRandom)
+        private
+    {
         uint256 roundId = _roundId;
+        bytes32 userCommitment = _userCommitment;
         bytes32 userRandom = _userRandom;
         bytes32 providerRandom = _providerRandom;
         Round storage round = rounds[roundId];
-        if (
-            round.status != RoundStatus.Open ||
-            block.timestamp >= round.cutoffTime
-        ) {
+        if (round.status != RoundStatus.Open || block.timestamp >= round.cutoffTime) {
             revert InvalidStatus();
         }
         uint256 fee = entropy.getFee(entropyProvider);
-        uint64 sequenceNumber = entropy.request{value: fee}(
-            entropyProvider,
-            userCommitment,
-            true
-        );
+        sequenceNumber = entropy.request{value: fee}(entropyProvider, userCommitment, true);
         requestedFlips[sequenceNumber] = msg.sender;
         uint256 userDepositCount = depositCount[roundId][msg.sender];
         if (userDepositCount == 0) {
@@ -862,11 +754,7 @@ contract Ludka is
             uint256 entriesCount = msg.value / roundValuePerEntry;
             totalEntriesCount += entriesCount;
 
-            currentEntryIndex = _getCurrentEntryIndexWithoutAccrual(
-                round,
-                roundDepositCount,
-                entriesCount
-            );
+            currentEntryIndex = _getCurrentEntryIndexWithoutAccrual(round, roundDepositCount, entriesCount);
 
             round.deposits.push(
                 Deposit({
@@ -958,17 +846,10 @@ contract Ludka is
             uint256 numberOfParticipants = round.numberOfParticipants;
 
             if (
-                numberOfParticipants == round.maximumNumberOfParticipants ||
-                (numberOfParticipants > 1 &&
-                    roundDepositCount == maximumNumberOfDeposits)
+                numberOfParticipants == round.maximumNumberOfParticipants
+                    || (numberOfParticipants > 1 && roundDepositCount == maximumNumberOfDeposits)
             ) {
-                _drawWinner(
-                    round,
-                    roundsCount,
-                    sequenceNumber,
-                    userRandom,
-                    providerRandom
-                );
+                _drawWinner(round, roundsCount, userRandom, providerRandom);
             }
         }
 
@@ -1006,10 +887,7 @@ contract Ludka is
      * @param round The round to check the status of.
      * @param status The expected status of the round
      */
-    function _validateRoundStatus(
-        Round storage round,
-        RoundStatus status
-    ) private view {
+    function _validateRoundStatus(Round storage round, RoundStatus status) private view {
         if (round.status != status) {
             revert InvalidStatus();
         }
@@ -1020,30 +898,24 @@ contract Ludka is
      * @param roundDepositCount The number of deposits in the round.
      * @param entriesCount The number of entries to be added.
      */
-    function _getCurrentEntryIndexWithoutAccrual(
-        Round storage round,
-        uint256 roundDepositCount,
-        uint256 entriesCount
-    ) private view returns (uint40 currentEntryIndex) {
+    function _getCurrentEntryIndexWithoutAccrual(Round storage round, uint256 roundDepositCount, uint256 entriesCount)
+        private
+        view
+        returns (uint40 currentEntryIndex)
+    {
         if (roundDepositCount == 0) {
             currentEntryIndex = uint40(_unsafeSubtract(entriesCount, 1));
         } else {
-            currentEntryIndex = uint40(
-                round
-                    .deposits[_unsafeSubtract(roundDepositCount, 1)]
-                    .currentEntryIndex + entriesCount
-            );
+            currentEntryIndex =
+                uint40(round.deposits[_unsafeSubtract(roundDepositCount, 1)].currentEntryIndex + entriesCount);
         }
     }
 
     /**
-     *@param price - PYTH oracle price
-     *@param targetDecimals - decimal ERC20 token
+     * @param price - PYTH oracle price
+     * @param targetDecimals - decimal ERC20 token
      */
-    function convertToUint(
-        PythStructs.Price memory price,
-        uint8 targetDecimals
-    ) private pure returns (uint256) {
+    function convertToUint(PythStructs.Price memory price, uint8 targetDecimals) private pure returns (uint256) {
         if (price.price < 0 || price.expo > 0 || price.expo < -255) {
             revert();
         }
@@ -1051,30 +923,22 @@ contract Ludka is
         uint8 priceDecimals = uint8(uint32(-1 * price.expo));
 
         if (targetDecimals >= priceDecimals) {
-            return
-                uint(uint64(price.price)) *
-                10 ** uint32(targetDecimals - priceDecimals);
+            return uint256(uint64(price.price)) * 10 ** uint32(targetDecimals - priceDecimals);
         } else {
-            return
-                uint(uint64(price.price)) /
-                10 ** uint32(priceDecimals - targetDecimals);
+            return uint256(uint64(price.price)) / 10 ** uint32(priceDecimals - targetDecimals);
         }
     }
 
     /**
      * Unsafe math functions.
      */
-
     function _unsafeAdd(uint256 a, uint256 b) private pure returns (uint256) {
         unchecked {
             return a + b;
         }
     }
 
-    function _unsafeSubtract(
-        uint256 a,
-        uint256 b
-    ) private pure returns (uint256) {
+    function _unsafeSubtract(uint256 a, uint256 b) private pure returns (uint256) {
         unchecked {
             return a - b;
         }

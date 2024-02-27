@@ -18,22 +18,10 @@ interface ILudka {
     event CurrenciesStatusUpdated(address[] currencies, bool isAllowed);
     event Deposited(address depositor, uint256 roundId, uint256 entriesCount);
     event PYTHOracleUpdated(address PYTHOracle);
-    event MaximumNumberOfDepositsPerRoundUpdated(
-        uint40 maximumNumberOfDepositsPerRound
-    );
-    event MaximumNumberOfParticipantsPerRoundUpdated(
-        uint40 maximumNumberOfParticipantsPerRound
-    );
-    event PrizesClaimed(
-        uint256 roundId,
-        address winner,
-        uint256[] prizeIndices
-    );
-    event DepositsWithdrawn(
-        uint256 roundId,
-        address depositor,
-        uint256[] depositIndices
-    );
+    event MaximumNumberOfDepositsPerRoundUpdated(uint40 maximumNumberOfDepositsPerRound);
+    event MaximumNumberOfParticipantsPerRoundUpdated(uint40 maximumNumberOfParticipantsPerRound);
+    event PrizesClaimed(uint256 roundId, address winner, uint256[] prizeIndices);
+    event DepositsWithdrawn(uint256 roundId, address depositor, uint256[] depositIndices);
     event ProtocolFeeBpUpdated(uint16 protocolFeeBp);
     event ProtocolFeeRecipientUpdated(address protocolFeeRecipient);
     event RandomnessRequested(uint256 roundId, uint256 requestId);
@@ -97,7 +85,6 @@ interface ILudka {
      * @param timestamp The timestamp of the response.
      * @param signature The signature of the response.
      */
-
     struct DepositCalldata {
         TokenType tokenType;
         address tokenAddress;
@@ -158,37 +145,30 @@ interface ILudka {
     /**
      * @param claimPrizesCalldata The rounds and the indices for the rounds for the prizes to claim.
      */
-    function claimPrizes(
-        ClaimPrizesCalldata[] calldata claimPrizesCalldata
-    ) external payable;
+    function claimPrizes(ClaimPrizesCalldata[] calldata claimPrizesCalldata) external payable;
 
     /**
      * @notice This function calculates the ETH payment required to claim the prizes for multiple rounds.
      * @param claimPrizesCalldata The rounds and the indices for the rounds for the prizes to claim.
      */
-    function getClaimPrizesPaymentRequired(
-        ClaimPrizesCalldata[] calldata claimPrizesCalldata
-    ) external view returns (uint256 protocolFeeOwed);
+    function getClaimPrizesPaymentRequired(ClaimPrizesCalldata[] calldata claimPrizesCalldata)
+        external
+        view
+        returns (uint256 protocolFeeOwed);
 
     /**
      * @notice This function allows withdrawal of deposits from a round if the round is cancelled
      * @param roundId The drawn round ID.
      * @param depositIndices The indices of the deposits to withdraw.
      */
-    function withdrawDeposits(
-        uint256 roundId,
-        uint256[] calldata depositIndices
-    ) external;
+    function withdrawDeposits(uint256 roundId, uint256[] calldata depositIndices) external;
 
     /**
      * @param roundId The open round ID.
      */
-    function deposit(
-        uint256 roundId,
-        bytes32 userCommitment,
-        bytes32 userRandom,
-        bytes32 providerRandom
-    ) external payable;
+    function deposit(uint256 roundId, bytes32 userCommitment, bytes32 userRandom, bytes32 providerRandom)
+        external
+        payable;
 
     /**
      *
@@ -199,18 +179,12 @@ interface ILudka {
         bytes32 providerRandom
     ) external payable;
 
-    function drawWinner(
-        uint64 sequenceNumber,
-        bytes32 userRandom,
-        bytes32 providerRandom
-    ) external;
+    function drawWinner(bytes32 userRandom, bytes32 providerRandom) external;
 
     /**
      * @param roundId The round ID.
      */
-    function getDeposits(
-        uint256 roundId
-    ) external view returns (Deposit[] memory);
+    function getDeposits(uint256 roundId) external view returns (Deposit[] memory);
 
     /**
      * @notice This function allows the owner to pause/unpause the contract.
@@ -223,10 +197,7 @@ interface ILudka {
      * @param isAllowed Whether the currencies should be allowed in the ludkas
      * @dev Only callable by owner.
      */
-    function updateCurrenciesStatus(
-        address[] calldata currencies,
-        bool isAllowed
-    ) external;
+    function updateCurrenciesStatus(address[] calldata currencies, bool isAllowed) external;
 
     /**
      * @notice This function allows the owner to update the duration of each round.
@@ -256,17 +227,13 @@ interface ILudka {
      * @notice This function allows the owner to update the maximum number of participants per round.
      * @param _maximumNumberOfParticipantsPerRound The maximum number of participants per round.
      */
-    function updateMaximumNumberOfParticipantsPerRound(
-        uint40 _maximumNumberOfParticipantsPerRound
-    ) external;
+    function updateMaximumNumberOfParticipantsPerRound(uint40 _maximumNumberOfParticipantsPerRound) external;
 
     /**
      * @notice This function allows the owner to update the maximum number of deposits per round.
      * @param _maximumNumberOfDepositsPerRound The maximum number of deposits per round.
      */
-    function updateMaximumNumberOfDepositsPerRound(
-        uint40 _maximumNumberOfDepositsPerRound
-    ) external;
+    function updateMaximumNumberOfDepositsPerRound(uint40 _maximumNumberOfDepositsPerRound) external;
 
     /**
      * @notice This function allows the owner to update ERC20 oracle's address.
