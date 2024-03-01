@@ -166,18 +166,12 @@ interface ILudka {
     /**
      * @param roundId The open round ID.
      */
-    function deposit(uint256 roundId, bytes32 userCommitment, bytes32 userRandom, bytes32 providerRandom)
-        external
-        payable;
+    function deposit(uint256 roundId) external payable;
 
     /**
      *
      */
-    function cancelCurrentRoundAndDepositToTheNextRound(
-        bytes32 userCommitment,
-        bytes32 userRandom,
-        bytes32 providerRandom
-    ) external payable;
+    function cancelCurrentRoundAndDepositToTheNextRound() external payable;
 
     function drawWinner(bytes32 userRandom, bytes32 providerRandom) external;
 

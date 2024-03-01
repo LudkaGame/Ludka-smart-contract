@@ -4,16 +4,10 @@ pragma solidity 0.8.20;
 import {IERC20} from "../lib/@looksrare/contracts-libs/contracts/interfaces/generic/IERC20.sol";
 import {ReentrancyGuard} from "../lib/@looksrare/contracts-libs/contracts/ReentrancyGuard.sol";
 import {Pausable} from "../lib/@looksrare/contracts-libs/contracts/Pausable.sol";
-
-/*     import {LowLevelWETH} from "../lib/@looksrare/contracts-libs/contracts/lowLevelCallers/LowLevelWETH.sol";
-    import {LowLevelERC20Transfer} from "../lib/@looksrare/contracts-libs/contracts/lowLevelCallers/LowLevelERC20Transfer.sol"; */
-
 import {AccessControl} from "../lib/@openzeppelin/contracts/access/AccessControl.sol";
-
 import {IEntropy} from "../lib/@pythnetwork/entropy-sdk-solidity/IEntropy.sol";
 import "../lib/@pythnetwork/pyth-sdk-solidity/IPyth.sol";
 import "../lib/@pythnetwork/pyth-sdk-solidity/PythStructs.sol";
-
 import {ILudka} from "./interfaces/ILudka.sol";
 import {IBlast} from "./interfaces/IBlast.sol";
 import {Arrays} from "./libraries/Arrays.sol";
@@ -43,6 +37,7 @@ contract Ludka is
      * @notice The maximum protocol fee in basis points, which is 5%.
      */
     uint16 public constant MAXIMUM_PROTOCOL_FEE_BP = 500;
+
     uint64 public sequenceNumber;
     /**
      * @notice the Blast contract for change Gas Mode to Claimable.
@@ -162,26 +157,17 @@ contract Ludka is
     /**
      * @inheritdoc ILudka
      */
-    function cancelCurrentRoundAndDepositToTheNextRound(
-        bytes32 userCommitment,
-        bytes32 userRandom,
-        bytes32 providerRandom
-    ) external payable nonReentrant whenNotPaused {
+    function cancelCurrentRoundAndDepositToTheNextRound() external payable nonReentrant whenNotPaused {
         uint256 roundId = roundsCount;
         _cancel(roundId);
-        _deposit(_unsafeAdd(roundId, 1), userCommitment, userRandom, providerRandom);
+        _deposit(_unsafeAdd(roundId, 1));
     }
 
     /**
      * @inheritdoc ILudka
      */
-    function deposit(uint256 roundId, bytes32 userCommitment, bytes32 userRandom, bytes32 providerRandom)
-        external
-        payable
-        nonReentrant
-        whenNotPaused
-    {
-        _deposit(roundId, userCommitment, userRandom, providerRandom);
+    function deposit(uint256 roundId) external payable nonReentrant whenNotPaused {
+        _deposit(roundId);
     }
 
     /**
@@ -715,16 +701,10 @@ contract Ludka is
         }
     }
 
-    /**
-     * @param _roundId The open round ID.
-     */
-    function _deposit(uint256 _roundId, bytes32 _userCommitment, bytes32 _userRandom, bytes32 _providerRandom)
-        private
-    {
+    function getSequenceNumber(uint256 _roundId, bytes32 _userCommitment) external returns (uint64) {
+        _validateIsOperator();
         uint256 roundId = _roundId;
         bytes32 userCommitment = _userCommitment;
-        bytes32 userRandom = _userRandom;
-        bytes32 providerRandom = _providerRandom;
         Round storage round = rounds[roundId];
         if (round.status != RoundStatus.Open || block.timestamp >= round.cutoffTime) {
             revert InvalidStatus();
@@ -732,6 +712,18 @@ contract Ludka is
         uint256 fee = entropy.getFee(entropyProvider);
         sequenceNumber = entropy.request{value: fee}(entropyProvider, userCommitment, true);
         requestedFlips[sequenceNumber] = msg.sender;
+        return sequenceNumber;
+    }
+    /**
+     * @param _roundId The open round ID.
+     */
+
+    function _deposit(uint256 _roundId) private {
+        uint256 roundId = _roundId;
+        Round storage round = rounds[roundId];
+        if (round.status != RoundStatus.Open || block.timestamp >= round.cutoffTime) {
+            revert InvalidStatus();
+        }
         uint256 userDepositCount = depositCount[roundId][msg.sender];
         if (userDepositCount == 0) {
             unchecked {
@@ -837,22 +829,10 @@ contract Ludka is
                     }
                 }
             } */
-        if (userRandom.length != 0 && providerRandom.length != 0) {
-            uint256 maximumNumberOfDeposits = round.maximumNumberOfDeposits;
-            if (roundDepositCount > maximumNumberOfDeposits) {
-                revert MaximumNumberOfDepositsReached();
-            }
-
-            uint256 numberOfParticipants = round.numberOfParticipants;
-
-            if (
-                numberOfParticipants == round.maximumNumberOfParticipants
-                    || (numberOfParticipants > 1 && roundDepositCount == maximumNumberOfDeposits)
-            ) {
-                _drawWinner(round, roundsCount, userRandom, providerRandom);
-            }
+        uint256 maximumNumberOfDeposits = round.maximumNumberOfDeposits;
+        if (roundDepositCount > maximumNumberOfDeposits) {
+            revert MaximumNumberOfDepositsReached();
         }
-
         unchecked {
             depositCount[roundId][msg.sender] = userDepositCount + 1;
         }

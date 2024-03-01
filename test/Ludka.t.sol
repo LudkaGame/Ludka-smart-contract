@@ -46,10 +46,9 @@ contract TestLudka is Test, Constants {
         /* RoundStatus status = ludka.rounds.status; */
         vm.prank(bob);
         (ILudka.RoundStatus status,,,, uint40 numberOfParticipants,,,,,) = ludka.rounds(1);
-        ludka.deposit{value: valuePerEntry}(
-            1, userCommitment1, 0xfd8d2cf88c63688b2713b909dd6e5931e763acae6432fccdb7499c8a975c31b0, 0
-        );
+        ludka.deposit{value: valuePerEntry}(1);
         (status,,,, numberOfParticipants,,,,,) = ludka.rounds(1);
+        console2.log(ludka.sequenceNumber());
         assertEq(uint8(status), 1);
         assertEq(numberOfParticipants, 1);
     }
@@ -60,19 +59,13 @@ contract TestLudka is Test, Constants {
     }
 
     function testDrawWinner() public asPrankedUser(alice) {
-        ludka.deposit{value: valuePerEntry}(
-            1, userCommitment1, 0xfd8d2cf88c63688b2713b909dd6e5931e763acae6432fccdb7499c8a975c31b0, 0
-        );
+        ludka.deposit{value: valuePerEntry}(1);
         vm.stopPrank();
         vm.prank(bob);
-        ludka.deposit{value: valuePerEntry}(
-            1, userCommitment1, 0xfd8d2cf88c63688b2713b909dd6e5931e763acae6432fccdb7499c8a975c31b0, 0
-        );
+        ludka.deposit{value: valuePerEntry}(1);
         vm.stopPrank();
         vm.prank(david);
-        ludka.deposit{value: valuePerEntry}(
-            1, userCommitment1, 0xfd8d2cf88c63688b2713b909dd6e5931e763acae6432fccdb7499c8a975c31b0, 0
-        );
+        ludka.deposit{value: valuePerEntry}(1);
         vm.stopPrank();
         vm.prank(alice);
         vm.warp(block.timestamp + 3600);
