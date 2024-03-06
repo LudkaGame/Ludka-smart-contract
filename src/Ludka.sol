@@ -678,8 +678,8 @@ contract Ludka is ILudka, AccessControl, ReentrancyGuard, Pausable {
 
             uint256 currentEntryIndex = currentEntryIndexArray[_unsafeSubtract(count, 1)];
             uint256 entriesSold = _unsafeAdd(currentEntryIndex, 1);
-            /* bytes32 randomNumber = entropy.reveal(entropyProvider, sequenceNumber, userRandom, providerRandom); */
-            uint256 winningEntry = uint256(sequenceNumber) % entriesSold;
+            bytes32 randomNumber = entropy.reveal(entropyProvider, sequenceNumber, userRandom, providerRandom);
+            uint256 winningEntry = uint256(randomNumber) % entriesSold;
             round.winner = round.deposits[currentEntryIndexArray.findUpperBound(winningEntry)].depositor;
             round.protocolFeeOwed = (round.valuePerEntry * entriesSold * round.protocolFeeBp) / 10_000;
 
