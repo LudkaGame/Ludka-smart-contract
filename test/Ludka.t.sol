@@ -5,6 +5,7 @@ import {Test, console2, StdStyle, Vm} from "../lib/forge-std/src/Test.sol";
 import {Ludka} from "../src/Ludka.sol";
 import {ILudka} from "../src/interfaces/ILudka.sol";
 import {Constants} from "./Constants.sol";
+import {IWETH} from "../src/interfaces/IWETH.sol";
 
 contract TestLudka is Test, Constants {
     Ludka public ludka;
@@ -26,6 +27,7 @@ contract TestLudka is Test, Constants {
         vm.deal(alice, 10 ether);
         vm.deal(bob, 10 ether);
         vm.deal(david, 10 ether);
+
         ludka = new Ludka(
             alice,
             alice,
@@ -59,20 +61,49 @@ contract TestLudka is Test, Constants {
     }
 
     function testDrawWinner() public asPrankedUser(alice) {
-        ludka.deposit{value: valuePerEntry}(1);
+        uint256 roundId = uint256(ludka.roundsCount());
+        (ILudka.RoundStatus status, address winner,,, uint40 numberOfParticipants,,,,,) = ludka.rounds(roundId);
+        ludka.deposit{value: 10 * valuePerEntry}(roundId);
         vm.stopPrank();
         vm.prank(bob);
-        ludka.deposit{value: valuePerEntry}(1);
+        ludka.deposit{value: 10 * valuePerEntry}(roundId);
         vm.stopPrank();
         vm.prank(david);
-        ludka.deposit{value: valuePerEntry}(1);
+        ludka.deposit{value: 10 * valuePerEntry}(roundId);
         vm.stopPrank();
-        vm.prank(alice);
+        vm.startPrank(alice);
         vm.warp(block.timestamp + 3600);
-        ludka.drawWinner(
-            0xfd8d2cf88c63688b2713b909dd6e5931e763acae6432fccdb7499c8a975c31b0,
-            0xc0d1b24ce5a3041a25be4c15458a6210971d5e940856b37faf900d2dc8605dff
-        );
+        ludka.getSequenceNumber(roundId, userCommitment1);
+        (status, winner,,, numberOfParticipants,,,,,) = ludka.rounds(roundId);
+        console2.log(winner);
+        assertTrue(winner == address(0));
+        ludka.drawWinner(randomhex1, providerRandom);
+        (status, winner,,, numberOfParticipants,,,,,) = ludka.rounds(roundId);
+        console2.log(winner);
+        assertFalse(winner == address(0));
+        assertEq(ludka.roundsCount(), roundId + 1);
+    }
+
+    function test_claimPrizes() public {
+        testDrawWinner();
+        uint256 roundId = uint256(ludka.roundsCount()) - 1;
+        ludka.deposit{value: valuePerEntry}(ludka.roundsCount()); // for more eth on ludka becose we pay 101 wey for PYTH SequenceNumber
+        ludka.getDeposits(roundId);
+        ILudka.Deposit[] memory deposits = ludka.getDeposits(roundId);
+        uint256[] memory winnerIndices = new uint256[](deposits.length);
+        for (uint256 i; i < deposits.length; i++) {
+            winnerIndices[i] = i;
+        }
+        ILudka.ClaimPrizesCalldata[] memory claimPrizesCalldata = new ILudka.ClaimPrizesCalldata[](1);
+        claimPrizesCalldata[0].roundId = roundId;
+        claimPrizesCalldata[0].prizeIndices = winnerIndices;
+
+        vm.stopPrank();
+        vm.prank(david);
+
+        ludka.claimPrizes(claimPrizesCalldata);
+
+        assertTrue(david.balance > 10 ether);
     }
 
     function test_pause_RevertIf_NotOwner() public asPrankedUser(bob) {

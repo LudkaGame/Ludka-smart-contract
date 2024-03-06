@@ -18,14 +18,7 @@ import {IWETH} from "./interfaces/IWETH.sol";
  * @notice This contract just LUDKA
  * @author luthreek
  */
-contract Ludka is
-    ILudka,
-    AccessControl,
-    /*         LowLevelWETH,
-        LowLevelERC20Transfer, */
-    ReentrancyGuard,
-    Pausable
-{
+contract Ludka is ILudka, AccessControl, ReentrancyGuard, Pausable {
     using Arrays for uint256[];
 
     /**
@@ -36,7 +29,7 @@ contract Ludka is
     /**
      * @notice The maximum protocol fee in basis points, which is 5%.
      */
-    uint16 public constant MAXIMUM_PROTOCOL_FEE_BP = 500;
+    uint16 public constant MAXIMUM_PROTOCOL_FEE_BP = 2_500;
 
     uint64 public sequenceNumber;
     /**
@@ -178,14 +171,15 @@ contract Ludka is
     }
 
     function drawWinner(bytes32 userRandom, bytes32 providerRandom) external nonReentrant whenNotPaused {
+        _validateIsOperator();
         uint256 roundId = roundsCount;
         Round storage round = rounds[roundId];
 
-        _validateRoundStatus(round, RoundStatus.Open);
+        _validateRoundStatus(round, RoundStatus.Drawing);
 
-        if (block.timestamp < round.cutoffTime) {
+        /*                 if (block.timestamp < round.cutoffTime) {
             revert CutoffTimeNotReached();
-        }
+        } */
 
         if (round.numberOfParticipants < 2) {
             revert InsufficientParticipants();
@@ -201,7 +195,7 @@ contract Ludka is
     /**
      * @inheritdoc ILudka
      */
-    function cancelAfterRandomnessRequest() external nonReentrant whenNotPaused {
+    function cancelAfterGetSequenceNumber() external nonReentrant whenNotPaused {
         uint256 roundId = roundsCount;
         Round storage round = rounds[roundId];
 
@@ -252,7 +246,7 @@ contract Ludka is
 
                 Deposit storage prize = round.deposits[index];
 
-                if (prize.withdrawn) {
+                if (prize.withdrawn == true) {
                     revert AlreadyWithdrawn();
                 }
 
@@ -278,10 +272,9 @@ contract Ludka is
                             transferAccumulator.amount = prize.tokenAmount;
                         } */
                     }
-
-                    unchecked {
-                        ++j;
-                    }
+                }
+                unchecked {
+                    ++j;
                 }
             }
             protocolFeeOwed += round.protocolFeeOwed;
@@ -334,16 +327,16 @@ contract Ludka is
             } */
 
         if (ethAmount != 0) {
-            address _protocolFeeRecipient = protocolFeeRecipient;
+            address winner = msg.sender;
             bool status;
 
             assembly {
-                status := call(10000, _protocolFeeRecipient, protocolFeeOwed, 0, 0, 0, 0)
+                status := call(10000, winner, ethAmount, 0, 0, 0, 0)
             }
 
             if (!status) {
-                IWETH(WETH).deposit{value: protocolFeeOwed}();
-                IWETH(WETH).transfer(_protocolFeeRecipient, protocolFeeOwed);
+                IWETH(WETH).deposit{value: ethAmount}();
+                IWETH(WETH).transfer(winner, ethAmount);
             }
         }
     }
@@ -448,7 +441,7 @@ contract Ludka is
             }
 
             if (ethAmount != 0) {
-                address _protocolFeeRecipient = protocolFeeRecipient;
+                address _protocolFeeRecipient = msg.sender;
                 bool status;
 
                 assembly {
@@ -671,15 +664,9 @@ contract Ludka is
      * @param roundId The open round ID.
      */
     function _drawWinner(Round storage round, uint256 roundId, bytes32 userRandom, bytes32 providerRandom) private {
-        round.status = RoundStatus.Drawing;
-        round.drawnAt = uint40(block.timestamp);
-
         Round storage round = rounds[roundId];
-
         if (round.status == RoundStatus.Drawing) {
             round.status = RoundStatus.Drawn;
-            bytes32 randomNumber = entropy.reveal(entropyProvider, sequenceNumber, userRandom, providerRandom);
-
             uint256 count = round.deposits.length;
             uint256[] memory currentEntryIndexArray = new uint256[](count);
             for (uint256 i; i < count;) {
@@ -691,7 +678,8 @@ contract Ludka is
 
             uint256 currentEntryIndex = currentEntryIndexArray[_unsafeSubtract(count, 1)];
             uint256 entriesSold = _unsafeAdd(currentEntryIndex, 1);
-            uint256 winningEntry = uint256(randomNumber) % entriesSold;
+            /* bytes32 randomNumber = entropy.reveal(entropyProvider, sequenceNumber, userRandom, providerRandom); */
+            uint256 winningEntry = uint256(sequenceNumber) % entriesSold;
             round.winner = round.deposits[currentEntryIndexArray.findUpperBound(winningEntry)].depositor;
             round.protocolFeeOwed = (round.valuePerEntry * entriesSold * round.protocolFeeBp) / 10_000;
 
@@ -704,11 +692,10 @@ contract Ludka is
     function getSequenceNumber(uint256 _roundId, bytes32 _userCommitment) external returns (uint64) {
         _validateIsOperator();
         uint256 roundId = _roundId;
-        bytes32 userCommitment = _userCommitment;
         Round storage round = rounds[roundId];
-        if (round.status != RoundStatus.Open || block.timestamp >= round.cutoffTime) {
-            revert InvalidStatus();
-        }
+        round.status = RoundStatus.Drawing;
+        round.drawnAt = uint40(block.timestamp);
+        bytes32 userCommitment = _userCommitment;
         uint256 fee = entropy.getFee(entropyProvider);
         sequenceNumber = entropy.request{value: fee}(entropyProvider, userCommitment, true);
         requestedFlips[sequenceNumber] = msg.sender;

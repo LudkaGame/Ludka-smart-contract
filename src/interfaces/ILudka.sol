@@ -140,7 +140,7 @@ interface ILudka {
      *         does not arrive after a certain amount of time.
      *         Only callable by contract owner.
      */
-    function cancelAfterRandomnessRequest() external;
+    function cancelAfterGetSequenceNumber() external;
 
     /**
      * @param claimPrizesCalldata The rounds and the indices for the rounds for the prizes to claim.
