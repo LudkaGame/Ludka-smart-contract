@@ -143,9 +143,12 @@ interface ILudka {
     function cancelAfterGetSequenceNumber() external;
 
     /**
-     * @param claimPrizesCalldata The rounds and the indices for the rounds for the prizes to claim.
+     * param claimPrizesCalldata The rounds and the indices for the rounds for the prizes to claim.
      */
-    function claimPrizes(ClaimPrizesCalldata[] calldata claimPrizesCalldata) external payable;
+    function claimPrizes( /* ClaimPrizesCalldata[] calldata claimPrizesCalldata */
+        uint256 roundId,
+        uint256[] calldata prizeIndices
+    ) external payable;
 
     /**
      * @notice This function calculates the ETH payment required to claim the prizes for multiple rounds.

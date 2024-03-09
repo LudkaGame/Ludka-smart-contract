@@ -215,51 +215,49 @@ contract Ludka is ILudka, AccessControl, ReentrancyGuard, Pausable {
     /**
      * @inheritdoc ILudka
      */
-    function claimPrizes(ClaimPrizesCalldata[] calldata claimPrizesCalldata)
-        external
-        payable
-        nonReentrant
-        whenNotPaused
-    {
+    function claimPrizes( /* ClaimPrizesCalldata[] calldata claimPrizesCalldata */
+        uint256 roundId,
+        uint256[] calldata prizeIndices
+    ) external payable nonReentrant whenNotPaused {
         TransferAccumulator memory transferAccumulator;
         uint256 ethAmount;
         uint256 protocolFeeOwed;
 
-        for (uint256 i; i < claimPrizesCalldata.length;) {
-            ClaimPrizesCalldata calldata perRoundClaimPrizesCalldata = claimPrizesCalldata[i];
+        /*        for (uint256 i; i < claimPrizesCalldata.length;) { */
+        /*             ClaimPrizesCalldata calldata perRoundClaimPrizesCalldata = claimPrizesCalldata[i]; */
 
-            Round storage round = rounds[perRoundClaimPrizesCalldata.roundId];
+        Round storage round = rounds[roundId];
 
-            _validateRoundStatus(round, RoundStatus.Drawn);
+        _validateRoundStatus(round, RoundStatus.Drawn);
 
-            if (msg.sender != round.winner) {
-                revert NotWinner();
+        if (msg.sender != round.winner) {
+            revert NotWinner();
+        }
+
+        /*             uint256[] calldata prizeIndices = perRoundClaimPrizesCalldata.prizeIndices; */
+
+        for (uint256 j; j < prizeIndices.length;) {
+            uint256 index = prizeIndices[j];
+            if (index >= round.deposits.length) {
+                revert InvalidIndex();
             }
 
-            uint256[] calldata prizeIndices = perRoundClaimPrizesCalldata.prizeIndices;
+            Deposit storage prize = round.deposits[index];
 
-            for (uint256 j; j < prizeIndices.length;) {
-                uint256 index = prizeIndices[j];
-                if (index >= round.deposits.length) {
-                    revert InvalidIndex();
-                }
+            if (prize.withdrawn == true) {
+                revert AlreadyWithdrawn();
+            }
 
-                Deposit storage prize = round.deposits[index];
+            prize.withdrawn = true;
 
-                if (prize.withdrawn == true) {
-                    revert AlreadyWithdrawn();
-                }
-
-                prize.withdrawn = true;
-
-                TokenType tokenType = prize.tokenType;
-                if (tokenType == TokenType.ETH) {
-                    ethAmount += prize.tokenAmount;
-                } else if (tokenType == TokenType.ERC20) {
-                    address prizeAddress = prize.tokenAddress;
-                    if (prizeAddress == transferAccumulator.tokenAddress) {
-                        transferAccumulator.amount += prize.tokenAmount;
-                        /*   } else {
+            TokenType tokenType = prize.tokenType;
+            if (tokenType == TokenType.ETH) {
+                ethAmount += prize.tokenAmount;
+            } else if (tokenType == TokenType.ERC20) {
+                address prizeAddress = prize.tokenAddress;
+                if (prizeAddress == transferAccumulator.tokenAddress) {
+                    transferAccumulator.amount += prize.tokenAmount;
+                    /*   } else {
                             if (transferAccumulator.amount != 0) {
                                 _executeERC20DirectTransfer(
                                     transferAccumulator.tokenAddress,
@@ -271,21 +269,21 @@ contract Ludka is ILudka, AccessControl, ReentrancyGuard, Pausable {
                             transferAccumulator.tokenAddress = prizeAddress;
                             transferAccumulator.amount = prize.tokenAmount;
                         } */
-                    }
-                }
-                unchecked {
-                    ++j;
                 }
             }
-            protocolFeeOwed += round.protocolFeeOwed;
-            round.protocolFeeOwed = 0;
-
-            emit PrizesClaimed(perRoundClaimPrizesCalldata.roundId, msg.sender, prizeIndices);
-
             unchecked {
-                ++i;
+                ++j;
             }
         }
+        protocolFeeOwed += round.protocolFeeOwed;
+        round.protocolFeeOwed = 0;
+
+        emit PrizesClaimed(roundId, msg.sender, prizeIndices);
+
+        /*             unchecked {
+                ++i;
+            } */
+        /* } */
 
         if (protocolFeeOwed != 0) {
             address _protocolFeeRecipient = protocolFeeRecipient;
@@ -664,6 +662,7 @@ contract Ludka is ILudka, AccessControl, ReentrancyGuard, Pausable {
      * @param roundId The open round ID.
      */
     function _drawWinner(Round storage round, uint256 roundId, bytes32 userRandom, bytes32 providerRandom) private {
+        _validateIsOperator();
         Round storage round = rounds[roundId];
         if (round.status == RoundStatus.Drawing) {
             round.status = RoundStatus.Drawn;
@@ -678,8 +677,8 @@ contract Ludka is ILudka, AccessControl, ReentrancyGuard, Pausable {
 
             uint256 currentEntryIndex = currentEntryIndexArray[_unsafeSubtract(count, 1)];
             uint256 entriesSold = _unsafeAdd(currentEntryIndex, 1);
-            bytes32 randomNumber = entropy.reveal(entropyProvider, sequenceNumber, userRandom, providerRandom);
-            uint256 winningEntry = uint256(randomNumber) % entriesSold;
+            /* bytes32 randomNumber = entropy.reveal(entropyProvider, sequenceNumber, userRandom, providerRandom); */
+            uint256 winningEntry = uint256(sequenceNumber) % entriesSold;
             round.winner = round.deposits[currentEntryIndexArray.findUpperBound(winningEntry)].depositor;
             round.protocolFeeOwed = (round.valuePerEntry * entriesSold * round.protocolFeeBp) / 10_000;
 
