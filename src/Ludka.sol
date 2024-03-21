@@ -709,10 +709,8 @@ contract Ludka is ILudka, AccessControl, ReentrancyGuard, Pausable {
     function _deposit() private {
         uint256 roundId = uint256(roundsCount);
         Round memory tround = rounds[roundId];
-        if (
-            tround.status != RoundStatus.Open && tround.status != RoundStatus.None
-                && tround.status != RoundStatus.Drawing
-        ) {
+        if (tround.status != RoundStatus.Open && tround.status != RoundStatus.None && tround.status != RoundStatus.Draw)
+        {
             _startRound({_roundsCount: roundId});
             unchecked {
                 roundId++;
@@ -858,7 +856,7 @@ contract Ludka is ILudka, AccessControl, ReentrancyGuard, Pausable {
 
         emit RoundStatusUpdated(roundId, RoundStatus.Cancelled);
 
-        _startRound({_roundsCount: roundId});
+        /* _startRound({_roundsCount: roundId}); */
     }
 
     /**
