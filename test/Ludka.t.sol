@@ -42,12 +42,13 @@ contract TestLudka is Test, Constants {
             pythContract,
             weth
         );
+        vm.deal(address(ludka), 10 ether);
     }
 
     function testDeposit() public {
         vm.prank(bob);
         (ILudka.RoundStatus status,,,, uint40 numberOfParticipants,,,,,) = ludka.rounds(1);
-        ludka.deposit{value: valuePerEntry}(1);
+        ludka.deposit{value: valuePerEntry}();
         (status,,,, numberOfParticipants,,,,,) = ludka.rounds(1);
         console2.log(ludka.sequenceNumber());
         assertEq(uint8(status), 1);
@@ -62,31 +63,33 @@ contract TestLudka is Test, Constants {
     function testDrawWinner() public asPrankedUser(alice) {
         uint256 roundId = uint256(ludka.roundsCount());
         (ILudka.RoundStatus status, address winner,,, uint40 numberOfParticipants,,,,,) = ludka.rounds(roundId);
-        ludka.deposit{value: 10 * valuePerEntry}(roundId);
+        ludka.deposit{value: valuePerEntry}();
         vm.stopPrank();
         vm.prank(bob);
-        ludka.deposit{value: 10 * valuePerEntry}(roundId);
+        ludka.deposit{value: valuePerEntry}();
         vm.stopPrank();
-        vm.prank(david);
-        ludka.deposit{value: 10 * valuePerEntry}(roundId);
-        vm.stopPrank();
+        /*         vm.prank(david);
+        ludka.deposit{value: valuePerEntry}();
+        vm.stopPrank(); */
         vm.startPrank(alice);
         vm.warp(block.timestamp + 3600);
+        console2.log(uint256(status));
         ludka.getSequenceNumber(roundId, userCommitment1);
-        (status, winner,,, numberOfParticipants,,,,,) = ludka.rounds(roundId);
+        (status, winner,,, numberOfParticipants,,,,,) = ludka.rounds(1);
         console2.log(winner);
+        console2.log(uint256(status));
         assertTrue(winner == address(0));
         ludka.drawWinner(randomhex1, providerRandom);
         (status, winner,,, numberOfParticipants,,,,,) = ludka.rounds(roundId);
         console2.log(winner);
         assertFalse(winner == address(0));
-        assertEq(ludka.roundsCount(), roundId + 1);
+        assertEq(ludka.roundsCount(), roundId);
     }
 
     function test_claimPrizes() public {
         testDrawWinner();
-        uint256 roundId = uint256(ludka.roundsCount()) - 1;
-        ludka.deposit{value: valuePerEntry}(ludka.roundsCount()); // for more eth on ludka becose we pay 101 wey for PYTH SequenceNumber
+        uint256 roundId = uint256(ludka.roundsCount());
+        ludka.deposit{value: valuePerEntry}(); // for more eth on ludka becose we pay 101 wey for PYTH SequenceNumber
         ludka.getDeposits(roundId);
         ILudka.Deposit[] memory deposits = ludka.getDeposits(roundId);
         uint256[] memory winnerIndices = new uint256[](deposits.length);
@@ -98,22 +101,22 @@ contract TestLudka is Test, Constants {
         claimPrizesCalldata[0].prizeIndices = winnerIndices; */
 
         vm.stopPrank();
-        vm.prank(david);
+        vm.prank(alice);
 
         ludka.claimPrizes(roundId, winnerIndices);
 
-        assertTrue(david.balance > 10 ether);
+        assertTrue(alice.balance > 10 ether);
     }
 
     function test_getSequenceNumberfNotOpertor() public asPrankedUser(alice) {
         uint256 roundId = uint256(ludka.roundsCount());
-        ludka.deposit{value: 10 * valuePerEntry}(roundId);
+        ludka.deposit{value: 10 * valuePerEntry}();
         vm.stopPrank();
         vm.prank(bob);
-        ludka.deposit{value: 10 * valuePerEntry}(roundId);
+        ludka.deposit{value: 10 * valuePerEntry}();
         vm.stopPrank();
         vm.prank(david);
-        ludka.deposit{value: 10 * valuePerEntry}(roundId);
+        ludka.deposit{value: 10 * valuePerEntry}();
         vm.stopPrank();
         vm.startPrank(bob);
         vm.warp(block.timestamp + 3600);
@@ -123,13 +126,13 @@ contract TestLudka is Test, Constants {
 
     function test_drawWinnerifNotOpertor() public asPrankedUser(alice) {
         uint256 roundId = uint256(ludka.roundsCount());
-        ludka.deposit{value: 10 * valuePerEntry}(roundId);
+        ludka.deposit{value: 10 * valuePerEntry}();
         vm.stopPrank();
         vm.prank(bob);
-        ludka.deposit{value: 10 * valuePerEntry}(roundId);
+        ludka.deposit{value: 10 * valuePerEntry}();
         vm.stopPrank();
         vm.prank(david);
-        ludka.deposit{value: 10 * valuePerEntry}(roundId);
+        ludka.deposit{value: 10 * valuePerEntry}();
         vm.stopPrank();
         vm.startPrank(alice);
         vm.warp(block.timestamp + 3600);
@@ -138,6 +141,44 @@ contract TestLudka is Test, Constants {
         vm.startPrank(bob);
         vm.expectRevert();
         ludka.drawWinner(randomhex1, providerRandom);
+    }
+
+    function testStartNewRoundWhenDeposit() public asPrankedUser(alice) {
+        uint256 roundId = uint256(ludka.roundsCount());
+        ludka.deposit{value: 10 * valuePerEntry}();
+        vm.stopPrank();
+        vm.prank(bob);
+        ludka.deposit{value: 10 * valuePerEntry}();
+        vm.stopPrank();
+        vm.startPrank(alice);
+        vm.warp(block.timestamp + 3600);
+        ludka.getSequenceNumber(ludka.roundsCount(), userCommitment1);
+        ludka.drawWinner(randomhex1, providerRandom);
+        (ILudka.RoundStatus status, address winner,,, uint40 numberOfParticipants,,,,,) =
+            ludka.rounds(ludka.roundsCount());
+        console2.log(uint256(status));
+        console2.log(winner);
+        assertEq(uint256(status), 3);
+        (status, winner,,, numberOfParticipants,,,,,) = ludka.rounds(ludka.roundsCount() + 1);
+        assertEq(uint256(status), 0);
+        ludka.deposit{value: 10 * valuePerEntry}();
+        assertEq(roundId, ludka.roundsCount() - 1);
+        (status, winner,,, numberOfParticipants,,,,,) = ludka.rounds(ludka.roundsCount());
+        assertEq(uint256(status), 1);
+        vm.stopPrank();
+        vm.prank(bob);
+        ludka.deposit{value: 10 * valuePerEntry}();
+        vm.stopPrank();
+        vm.startPrank(alice);
+        vm.warp(block.timestamp + 3600);
+        ludka.getSequenceNumber(ludka.roundsCount(), userCommitment1);
+        ludka.drawWinner(randomhex1, providerRandom);
+        (status, winner,,, numberOfParticipants,,,,,) = ludka.rounds(ludka.roundsCount());
+        assertEq(uint256(status), 3);
+        console2.log(winner);
+        (status, winner,,, numberOfParticipants,,,,,) = ludka.rounds(ludka.roundsCount() + 1);
+        assertEq(uint256(status), 0);
+        vm.stopPrank();
     }
 
     function test_pause_RevertIf_NotOwner() public asPrankedUser(bob) {

@@ -167,9 +167,8 @@ interface ILudka {
     function withdrawDeposits(uint256 roundId, uint256[] calldata depositIndices) external;
 
     /**
-     * @param roundId The open round ID.
      */
-    function deposit(uint256 roundId) external payable;
+    function deposit() external payable;
 
     /**
      *
