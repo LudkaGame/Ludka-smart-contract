@@ -694,14 +694,15 @@ contract Ludka is ILudka, AccessControl, ReentrancyGuard, Pausable {
         Round storage round = rounds[roundId];
         if (round.numberOfParticipants < 2) {
             _cancel(_roundId);
+        } else {
+            round.status = RoundStatus.Drawing;
+            round.drawnAt = uint40(block.timestamp);
+            bytes32 userCommitment = _userCommitment;
+            uint256 fee = entropy.getFee(entropyProvider);
+            sequenceNumber = entropy.request{value: fee}(entropyProvider, userCommitment, true);
+            requestedFlips[sequenceNumber] = msg.sender;
+            return sequenceNumber;
         }
-        round.status = RoundStatus.Drawing;
-        round.drawnAt = uint40(block.timestamp);
-        bytes32 userCommitment = _userCommitment;
-        uint256 fee = entropy.getFee(entropyProvider);
-        sequenceNumber = entropy.request{value: fee}(entropyProvider, userCommitment, true);
-        requestedFlips[sequenceNumber] = msg.sender;
-        return sequenceNumber;
     }
     /**
      */
