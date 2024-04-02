@@ -23,7 +23,7 @@ contract TestLudka is Test, Constants {
     }
 
     function setUp() public {
-        vm.createSelectFork("https://sepolia.blast.io", USE_BLOCK);
+        vm.createSelectFork( /* "https://mainnet.base.org", */ "https://sepolia.blast.io", USE_BLOCK);
         vm.deal(alice, 10 ether);
         vm.deal(bob, 10 ether);
         vm.deal(david, 10 ether);
@@ -74,7 +74,8 @@ contract TestLudka is Test, Constants {
         vm.startPrank(alice);
         vm.warp(block.timestamp + 3600);
         console2.log(uint256(status));
-        ludka.getSequenceNumber(roundId, userCommitment1);
+        uint256 fee = ludka.getFeefromEntropy();
+        ludka.getSequenceNumber{value: fee}(roundId, userCommitment1);
         (status, winner,,, numberOfParticipants,,,,,) = ludka.rounds(1);
         console2.log(winner);
         console2.log(uint256(status));
@@ -118,10 +119,12 @@ contract TestLudka is Test, Constants {
         vm.prank(david);
         ludka.deposit{value: 10 * valuePerEntry}();
         vm.stopPrank();
-        vm.startPrank(bob);
         vm.warp(block.timestamp + 3600);
-        vm.expectRevert();
-        ludka.getSequenceNumber(roundId, userCommitment1);
+        vm.startPrank(david);
+        bytes4 selector = bytes4(keccak256("NotOperator()"));
+        uint256 fee = ludka.getFeefromEntropy();
+        vm.expectRevert(abi.encodeWithSelector(selector));
+        ludka.getSequenceNumber{value: fee}(roundId, userCommitment1);
     }
 
     function test_drawWinnerifNotOpertor() public asPrankedUser(alice) {
@@ -136,10 +139,10 @@ contract TestLudka is Test, Constants {
         vm.stopPrank();
         vm.startPrank(alice);
         vm.warp(block.timestamp + 3600);
-        ludka.getSequenceNumber(roundId, userCommitment1);
+        ludka.getSequenceNumber{value: ludka.getFeefromEntropy()}(roundId, userCommitment1);
         vm.stopPrank();
         vm.startPrank(bob);
-        vm.expectRevert();
+        vm.expectRevert(abi.encodeWithSelector(bytes4(keccak256("NotOperator()"))));
         ludka.drawWinner(randomhex1, providerRandom);
     }
 
@@ -152,7 +155,7 @@ contract TestLudka is Test, Constants {
         vm.stopPrank();
         vm.startPrank(alice);
         vm.warp(block.timestamp + 3600);
-        ludka.getSequenceNumber(ludka.roundsCount(), userCommitment1);
+        ludka.getSequenceNumber{value: ludka.getFeefromEntropy()}(ludka.roundsCount(), userCommitment1);
         ludka.drawWinner(randomhex1, providerRandom);
         (ILudka.RoundStatus status, address winner,,, uint40 numberOfParticipants,,,,,) =
             ludka.rounds(ludka.roundsCount());
@@ -171,7 +174,7 @@ contract TestLudka is Test, Constants {
         vm.stopPrank();
         vm.startPrank(alice);
         vm.warp(block.timestamp + 3600);
-        ludka.getSequenceNumber(ludka.roundsCount(), userCommitment1);
+        ludka.getSequenceNumber{value: ludka.getFeefromEntropy()}(ludka.roundsCount(), userCommitment1);
         ludka.drawWinner(randomhex1, providerRandom);
         (status, winner,,, numberOfParticipants,,,,,) = ludka.rounds(ludka.roundsCount());
         assertEq(uint256(status), 3);

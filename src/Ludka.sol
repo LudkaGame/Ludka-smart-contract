@@ -688,8 +688,10 @@ contract Ludka is ILudka, AccessControl, ReentrancyGuard, Pausable {
         }
     }
 
-    function getSequenceNumber(uint256 _roundId, bytes32 _userCommitment) external returns (uint64) {
+    function getSequenceNumber(uint256 _roundId, bytes32 _userCommitment) external payable returns (uint64) {
         _validateIsOperator();
+        uint256 fee = entropy.getFee(entropyProvider);
+        if (msg.value != fee) revert InvalidValue();
         uint256 roundId = _roundId;
         Round storage round = rounds[roundId];
         if (round.numberOfParticipants < 2) {
@@ -698,11 +700,15 @@ contract Ludka is ILudka, AccessControl, ReentrancyGuard, Pausable {
             round.status = RoundStatus.Drawing;
             round.drawnAt = uint40(block.timestamp);
             bytes32 userCommitment = _userCommitment;
-            uint256 fee = entropy.getFee(entropyProvider);
+
             sequenceNumber = entropy.request{value: fee}(entropyProvider, userCommitment, true);
             requestedFlips[sequenceNumber] = msg.sender;
             return sequenceNumber;
         }
+    }
+
+    function getFeefromEntropy() external view returns (uint256) {
+        return entropy.getFee(entropyProvider);
     }
     /**
      */
