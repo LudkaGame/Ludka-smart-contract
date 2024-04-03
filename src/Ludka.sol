@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.20;
 
-import {IERC20} from "../lib/@looksrare/contracts-libs/contracts/interfaces/generic/IERC20.sol";
-import {ReentrancyGuard} from "../lib/@looksrare/contracts-libs/contracts/ReentrancyGuard.sol";
-import {Pausable} from "../lib/@looksrare/contracts-libs/contracts/Pausable.sol";
+import {IERC20} from "../lib/@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {ReentrancyGuard} from "../lib/@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import {Pausable} from "../lib/@openzeppelin/contracts/utils/Pausable.sol";
 import {AccessControl} from "../lib/@openzeppelin/contracts/access/AccessControl.sol";
 import {IEntropy} from "../lib/@pythnetwork/entropy-sdk-solidity/IEntropy.sol";
 import "../lib/@pythnetwork/pyth-sdk-solidity/IPyth.sol";
